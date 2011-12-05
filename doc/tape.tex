@@ -1,0 +1,166 @@
+% tape.tex
+% Copyright (c) 2004, 2009  Jean-Marc Bourguet
+% 
+% All rights reserved.
+% 
+% Redistribution and use in source and binary forms, with or without
+% modification, are permitted provided that the following conditions are
+% met:
+% 
+% * Redistributions of source code must retain the above copyright notice,
+% this list of conditions and the following disclaimer.
+% 
+% * Redistributions in binary form must reproduce the above copyright
+% notice, this list of conditions and the following disclaimer in the
+% documentation and/or other materials provided with the distribution.
+% 
+% * Neither the name of the <ORGANIZATION> nor the names of its
+% contributors may be used to endorse or promote products derived from this
+% software without specific prior written permission.
+% 
+% THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+% IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+% THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+% PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
+% CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+% EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+% PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+% PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+% LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+% NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+% SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+\documentclass[a4paper,12pt]{article}
+
+\usepackage[latin9]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+
+\title{Tape formats for PDP-11 simulators}
+\author{Jean-Marc Bourguet}
+\date{17 october 2004}
+
+\newcommand{\file}[1]{\texttt{#1}}
+\newcommand{\prog}[1]{\texttt{#1}}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+When wanting to manipulate tapes for the PDP-10 on disk and on other
+systems, there are two problems to solve:
+\begin{enumerate}
+\item representing the tapes as file on disk.  Tapes are record oriented
+  devices (the transfer unit is a record of varying length) while files on
+  current systems are not structured in record.
+\item representing 36 bits data on 9 tracks tapes.  The PDP-10 is a 36 bits
+  computer and the tapes have 9 tracks used to store 8 bits bytes.
+  Software on the PDP-10 used several methods to do the packing.
+\end{enumerate}
+
+\section{Representing tapes as file on disk}
+
+\subsection{TPC}
+
+This is the simplest representation.  The data for each record is preceeded
+by two bytes in the less significant byte first order representing the
+length of the record.  If this length is odd, a padding byte (of undefined
+value) is added before the next record.
+
+A tape mark (indication of end of file, two tape marks are used to mark the
+end of the recorded part of the tape) is an empty record.
+
+\subsection{TPE}
+
+In this representation, the record is preceeded by four bytes representing
+the length of the record (anew in little endian way).  If the most
+significant bit of the header is 1, then there was an error in the record.
+The record is not padded but it is followed by a copy of the header so that
+simulating backward tape motion is easy.
+
+\subsection{TPS}
+
+This is nearly the same format as TPE, but there is a padding byte for odd
+length record.
+
+\section{Representing 36 bits data on 9 tracks tapes}
+
+\subsection{Core-Dump}
+
+36 bits data is represented as 5 bytes.  The first four contains the 32
+most significant bits in most significant byte first order.  The last byte
+contains the 4 less significant bits padded with 0 in the 4 most
+significant bits of the result.
+
+\begin{verbatim}
+                B0  1  2  3  4  5  6  7
+                 8  9 10 11 12 13 14 15
+                16 17 18 19 20 21 22 23
+                24 25 26 27 28 29 30 31
+                 0  0  0  0 32 33 34 35
+\end{verbatim}
+
+\subsection{Industry-Compatible}
+
+The 32 most significant bits are represented as 4 bytes.  The four
+remaining bits are ignored.
+
+\begin{verbatim}
+                B0  1  2  3  4  5  6  7
+                 8  9 10 11 12 13 14 15
+                16 17 18 19 20 21 22 23
+                24 25 26 27 28 29 30 31
+\end{verbatim}
+
+\subsection{Sixbit}
+
+Groups of 6 bits are output.
+
+\begin{verbatim}
+                 0  0 B0  1  2  3  4  5
+                 0  0  6  7  8  9 10 11
+                 0  0 12 13 14 15 16 17
+                 0  0 18 19 20 21 22 23
+                 0  0 24 25 26 27 28 29
+                 0  0 30 31 32 33 34 35
+\end{verbatim}
+
+\subsection{ANSI-ASCII}
+
+\begin{verbatim}
+                 0 B0  1  2  3  4  5  6
+                 0  7  8  9 10 11 12 13
+                 0 14 15 16 17 18 19 20
+                 0 21 22 23 24 25 26 27
+                35 28 29 30 31 32 33 34
+\end{verbatim}
+
+With the less significant bit beeing 0 in ASCII files on the PDP-10, this
+allow easy transfer of text data.
+
+\subsection{High-density}
+
+\begin{verbatim}
+                B0  1  2  3  4  5  6  7
+                 8  9 10 11 12 13 14 15
+                16 17 18 19 20 21 22 23
+                24 25 26 27 28 29 30 31
+                32 33 34 35 B0  1  2  3
+                 4  5  6  7  8  9 10 11
+                12 13 14 15 16 17 18 19
+                20 21 22 23 24 25 26 27
+                28 29 30 31 32 33 34 35
+\end{verbatim}
+
+This has an higher density and is also used by the FTP protocol (RFCxxx).
+
+\section{References}
+
+All the information in this document, and then some more is contained in
+the \file{vtape.txt} file in the \prog{klh} distribution.  I sadly found
+out this only after having examined the \prog{simh} source and having
+experimented with setting SET TAPE FORMAT and examaning the result.
+
+\end{document}
